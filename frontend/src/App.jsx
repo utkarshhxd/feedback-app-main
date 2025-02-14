@@ -25,7 +25,7 @@ import {
   Input,
   Avatar
 } from "@mui/material";
-import { AddCircle, Search } from "@mui/icons-material";
+import { AddCircle, Search, MyLocation } from "@mui/icons-material";
 
 function App() {
   const [feedback, setFeedback] = useState([]);
@@ -36,7 +36,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const [image, setImage] = useState(null); // State to store the uploaded image
+  const [image, setImage] = useState(null);
+  const [location, setLocation] = useState(""); // New State for Location
+  const [fetchingLocation, setFetchingLocation] = useState(false);
 
   const ITEMS_PER_PAGE = 5;
 
@@ -63,6 +65,7 @@ function App() {
     const formData = new FormData();
     formData.append("category", category);
     formData.append("description", description);
+    formData.append("location", location); // Send location
     if (image) {
       formData.append("image", image);
     }
@@ -73,42 +76,40 @@ function App() {
       })
       .then((res) => {
         setFeedback([res.data.feedback, ...feedback]);
-        setDescription(""); // Clear input after submit
-        setImage(null); // Clear image after submit
+        setDescription("");
+        setImage(null);
+        setLocation("");
       })
       .catch((err) => setError("Failed to submit feedback."));
   };
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
-  };
-
-  const filteredFeedback = feedback
-    .filter(
-      (item) =>
-        (status === "All" || item.status === status) &&
-        (item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleCategoryChange = (e) => {
-    setCategory(e.target.value);
-  };
-
-  const handleStatusChange = (e) => {
-    setStatus(e.target.value);
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file); // Set the selected image
+  const fetchLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
     }
+
+    setFetchingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          setLocation(data.display_name || `${latitude}, ${longitude}`);
+        } catch (error) {
+          alert("Failed to fetch location.");
+        }
+        setFetchingLocation(false);
+      },
+      () => {
+        alert("Failed to get your location.");
+        setFetchingLocation(false);
+      }
+    );
   };
 
   return (
@@ -123,7 +124,7 @@ function App() {
           <Paper sx={{ padding: 3, borderRadius: 2, flex: 1, boxShadow: 3 }}>
             <FormControl fullWidth sx={{ marginBottom: 2 }}>
               <InputLabel>Category</InputLabel>
-              <Select value={category} onChange={handleCategoryChange} label="Category">
+              <Select value={category} onChange={(e) => setCategory(e.target.value)} label="Category">
                 <MenuItem value="Bug">Bug</MenuItem>
                 <MenuItem value="Feature Request">Feature Request</MenuItem>
                 <MenuItem value="General Feedback">General Feedback</MenuItem>
@@ -140,52 +141,40 @@ function App() {
               sx={{ marginBottom: 2 }}
             />
 
-            {/* Custom File Upload Button */}
-            <Button
-              variant="contained"
-              component="label"
-              color="secondary"
+            {/* Location Input & Button */}
+            <TextField
               fullWidth
-              sx={{
-                marginBottom: 2,
-                textTransform: "none",
-                backgroundColor: "#9c27b0",
-                '&:hover': { backgroundColor: "#7b1fa2" },
-              }}
-              startIcon={<AddCircle />}
+              label="Enter Location (Optional)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              sx={{ marginBottom: 2 }}
+            />
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={fetchLocation}
+              disabled={fetchingLocation}
+              startIcon={<MyLocation />}
+              sx={{ marginBottom: 2 }}
             >
+              {fetchingLocation ? "Fetching Location..." : "Use My Location"}
+            </Button>
+
+            {/* Image Upload */}
+            <Button variant="contained" component="label" color="secondary" fullWidth sx={{ marginBottom: 2 }}>
               Add Image
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                sx={{ display: "none" }} // Hide the default file input
-              />
+              <Input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} sx={{ display: "none" }} />
             </Button>
 
             {/* Image Preview */}
             {image && (
               <Box sx={{ marginBottom: 2, display: "flex", justifyContent: "center" }}>
-                <Avatar
-                  src={URL.createObjectURL(image)}
-                  sx={{ width: 80, height: 80, borderRadius: 0 }} // Square shape
-                />
+                <Avatar src={URL.createObjectURL(image)} sx={{ width: 80, height: 80, borderRadius: 0 }} />
               </Box>
             )}
 
-            {/* Submit Button */}
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={submitFeedback}
-              sx={{
-                marginBottom: 2,
-                backgroundColor: "#3f51b5",
-                '&:hover': { backgroundColor: "#303f9f" },
-              }}
-              startIcon={<AddCircle />}
-            >
+            {/* Submit Button - Inside the Paper */}
+            <Button variant="contained" color="primary" fullWidth onClick={submitFeedback}>
               Submit Feedback
             </Button>
           </Paper>
@@ -194,61 +183,30 @@ function App() {
         {/* Right Side: Feedback List */}
         <Grid item xs={12} md={7} sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <Paper sx={{ padding: 3, maxHeight: "500px", overflowY: "auto", borderRadius: 2, boxShadow: 3, flex: 1 }}>
-            {/* Feedback Status Inside Paper */}
-            <Typography variant="h5" align="center" sx={{ marginBottom: 2, fontWeight: 'bold' }}>
+            <Typography variant="h5" align="center" sx={{ marginBottom: 2 }}>
               Feedback Status
             </Typography>
-            {error && <Snackbar open={true} message={error} />}
-
-            {/* Search Feedback */}
-            <TextField
-              fullWidth
-              label="Search Feedback"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              sx={{ marginBottom: 2 }}
-              InputProps={{
-                endAdornment: (
-                  <IconButton>
-                    <Search />
-                  </IconButton>
-                ),
-              }}
-            />
-
-            {/* Status Filter */}
-            <FormControl fullWidth sx={{ marginBottom: 2 }}>
-              <InputLabel>Status</InputLabel>
-              <Select value={status} onChange={handleStatusChange} label="Status">
-                <MenuItem value="All">All</MenuItem>
-                <MenuItem value="Pending">Pending</MenuItem>
-                <MenuItem value="Resolved">Resolved</MenuItem>
-              </Select>
-            </FormControl>
 
             {loading ? (
               <CircularProgress sx={{ display: "block", margin: "auto" }} />
             ) : (
               <List>
-                {filteredFeedback
+                {feedback
                   .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
                   .map((item) => (
                     <ListItem key={item.id} sx={{ marginBottom: 2 }}>
-                      <Card sx={{ width: "100%", borderRadius: 2, boxShadow: 2, ":hover": { boxShadow: 6 } }}>
+                      <Card sx={{ width: "100%", borderRadius: 2, boxShadow: 2 }}>
                         <CardContent>
                           <ListItemText
                             primary={<Typography variant="h6">{`${item.category}: ${item.description}`}</Typography>}
                             secondary={
                               <Typography variant="body2" color="textSecondary">
-                                {`Status: ${item.status} | Submitted on: ${new Date(item.date).toLocaleString()}`}
+                                {`Status: ${item.status} | Location: ${item.location} | Submitted on: ${new Date(item.date).toLocaleString()}`}
                               </Typography>
                             }
                           />
                           {item.image && (
-                            <Avatar
-                              src={`http://localhost:5000${item.image}`}
-                              sx={{ width: 80, height: 80, marginTop: 1, borderRadius: 0 }} // Square shape
-                            />
+                            <Avatar src={`http://localhost:5000${item.image}`} sx={{ width: 80, height: 80, marginTop: 1 }} />
                           )}
                         </CardContent>
                       </Card>
@@ -258,9 +216,9 @@ function App() {
             )}
 
             <Pagination
-              count={Math.ceil(filteredFeedback.length / ITEMS_PER_PAGE)}
+              count={Math.ceil(feedback.length / ITEMS_PER_PAGE)}
               page={page}
-              onChange={handlePageChange}
+              onChange={(e, v) => setPage(v)}
               sx={{ marginTop: 2, display: "flex", justifyContent: "center" }}
             />
           </Paper>
