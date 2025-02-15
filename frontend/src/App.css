@@ -10,6 +10,8 @@
   padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
+  background: transparent;
+  border: 3px solid rgba(255, 255, 255, 0.5);
 }
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
@@ -36,9 +38,10 @@
 /* Transparent Card and Logo */
 .card {
   padding: 2em;
-  background-color: rgba(172, 137, 104, 0.5); /* Semi-transparent */
-  border-radius: 8px; /* Optional: Adds rounded corners */
-  backdrop-filter: blur(5px); /* Optional: Adds background blur effect */
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .read-the-docs {
@@ -47,16 +50,14 @@
 
 /* Transparent Background for Logo */
 .logo {
-  background-color: rgba(172, 137, 104, 0.3); /* Slight transparency */
-  border-radius: 50%; /* If you want circular logo */
+  border-radius: 50%;
 }
 
 /* Optional - Body Background Color */
 body {
-  background-color: #AC8968; /* Light brownish background color */
+  background-color: #AC8968;
   margin: 0;
   padding: 0;
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', sans-serif;
+  color: #fff;
 }
-
-

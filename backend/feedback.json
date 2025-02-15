@@ -132,5 +132,23 @@
     "image": null,
     "status": "Pending",
     "date": "2025-02-14T16:09:09.629Z"
+  },
+  {
+    "id": 20,
+    "category": "Bug",
+    "description": "evfe",
+    "location": "Not provided",
+    "image": null,
+    "status": "Pending",
+    "date": "2025-02-15T16:45:35.308Z"
+  },
+  {
+    "id": 21,
+    "category": "Bug",
+    "description": "v",
+    "location": "Not provided",
+    "image": "/uploads/1739639844779.jpg",
+    "status": "Pending",
+    "date": "2025-02-15T17:17:24.785Z"
   }
 ]
