@@ -21,11 +21,10 @@ import {
   CardContent,
   IconButton,
   Grid,
-  Divider,
   Input,
   Avatar
 } from "@mui/material";
-import { AddCircle, Search } from "@mui/icons-material";
+import { AddCircle, Search, MyLocation } from "@mui/icons-material";
 
 function App() {
   const [feedback, setFeedback] = useState([]);
@@ -37,6 +36,10 @@ function App() {
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [image, setImage] = useState(null); // State to store the uploaded image
+
+  // Location feature state
+  const [location, setLocation] = useState("");
+  const [fetchingLocation, setFetchingLocation] = useState(false);
 
   const ITEMS_PER_PAGE = 5;
 
@@ -63,6 +66,7 @@ function App() {
     const formData = new FormData();
     formData.append("category", category);
     formData.append("description", description);
+    formData.append("location", location); // Append location
     if (image) {
       formData.append("image", image);
     }
@@ -73,8 +77,9 @@ function App() {
       })
       .then((res) => {
         setFeedback([res.data.feedback, ...feedback]);
-        setDescription(""); // Clear input after submit
-        setImage(null); // Clear image after submit
+        setDescription(""); // Clear description
+        setImage(null); // Clear image
+        setLocation(""); // Clear location after submit
       })
       .catch((err) => setError("Failed to submit feedback."));
   };
@@ -107,8 +112,38 @@ function App() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(file); // Set the selected image
+      setImage(file);
     }
+  };
+
+  // Function to fetch location using the browser's geolocation API
+  const fetchLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setFetchingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await response.json();
+          setLocation(data.display_name || `${latitude}, ${longitude}`);
+        } catch (error) {
+          alert("Failed to fetch location.");
+        }
+        setFetchingLocation(false);
+      },
+      () => {
+        alert("Failed to get your location.");
+        setFetchingLocation(false);
+      }
+    );
   };
 
   return (
@@ -140,6 +175,25 @@ function App() {
               sx={{ marginBottom: 2 }}
             />
 
+            {/* Location Input & Button */}
+            <TextField
+              fullWidth
+              label="Enter Location (Optional)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              sx={{ marginBottom: 2 }}
+            />
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={fetchLocation}
+              disabled={fetchingLocation}
+              startIcon={<MyLocation />}
+              sx={{ marginBottom: 2 }}
+            >
+              {fetchingLocation ? "Fetching Location..." : "Use My Location"}
+            </Button>
+
             {/* Custom File Upload Button */}
             <Button
               variant="contained"
@@ -150,26 +204,18 @@ function App() {
                 marginBottom: 2,
                 textTransform: "none",
                 backgroundColor: "#9c27b0",
-                '&:hover': { backgroundColor: "#7b1fa2" },
+                "&:hover": { backgroundColor: "#7b1fa2" }
               }}
               startIcon={<AddCircle />}
             >
               Add Image
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                sx={{ display: "none" }} // Hide the default file input
-              />
+              <Input type="file" accept="image/*" onChange={handleImageChange} sx={{ display: "none" }} />
             </Button>
 
             {/* Image Preview */}
             {image && (
               <Box sx={{ marginBottom: 2, display: "flex", justifyContent: "center" }}>
-                <Avatar
-                  src={URL.createObjectURL(image)}
-                  sx={{ width: 80, height: 80, borderRadius: 0 }} // Square shape
-                />
+                <Avatar src={URL.createObjectURL(image)} sx={{ width: 80, height: 80, borderRadius: 0 }} />
               </Box>
             )}
 
@@ -182,7 +228,7 @@ function App() {
               sx={{
                 marginBottom: 2,
                 backgroundColor: "#3f51b5",
-                '&:hover': { backgroundColor: "#303f9f" },
+                "&:hover": { backgroundColor: "#303f9f" }
               }}
               startIcon={<AddCircle />}
             >
@@ -194,8 +240,7 @@ function App() {
         {/* Right Side: Feedback List */}
         <Grid item xs={12} md={7} sx={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <Paper sx={{ padding: 3, maxHeight: "500px", overflowY: "auto", borderRadius: 2, boxShadow: 3, flex: 1 }}>
-            {/* Feedback Status Inside Paper */}
-            <Typography variant="h5" align="center" sx={{ marginBottom: 2, fontWeight: 'bold' }}>
+            <Typography variant="h5" align="center" sx={{ marginBottom: 2, fontWeight: "bold" }}>
               Feedback Status
             </Typography>
             {error && <Snackbar open={true} message={error} />}
@@ -212,7 +257,7 @@ function App() {
                   <IconButton>
                     <Search />
                   </IconButton>
-                ),
+                )
               }}
             />
 
@@ -237,17 +282,21 @@ function App() {
                       <Card sx={{ width: "100%", borderRadius: 2, boxShadow: 2, ":hover": { boxShadow: 6 } }}>
                         <CardContent>
                           <ListItemText
-                            primary={<Typography variant="h6">{`${item.category}: ${item.description}`}</Typography>}
+                            primary={
+                              <Typography variant="h6">{`${item.category}: ${item.description}`}</Typography>
+                            }
                             secondary={
                               <Typography variant="body2" color="textSecondary">
-                                {`Status: ${item.status} | Submitted on: ${new Date(item.date).toLocaleString()}`}
+                                {`Status: ${item.status} | Location: ${
+                                  item.location || "N/A"
+                                } | Submitted on: ${new Date(item.date).toLocaleString()}`}
                               </Typography>
                             }
                           />
                           {item.image && (
                             <Avatar
                               src={`http://localhost:5000${item.image}`}
-                              sx={{ width: 80, height: 80, marginTop: 1, borderRadius: 0 }} // Square shape
+                              sx={{ width: 80, height: 80, marginTop: 1, borderRadius: 0 }}
                             />
                           )}
                         </CardContent>

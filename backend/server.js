@@ -28,7 +28,7 @@ const readData = () => {
 const writeData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
 app.post("/submit-feedback", upload.single("image"), (req, res) => {
-  const { category, description } = req.body;
+  const { category, description, location } = req.body; // Accept location
   const image = req.file ? `/uploads/${req.file.filename}` : null;
 
   let data = readData();
@@ -36,6 +36,7 @@ app.post("/submit-feedback", upload.single("image"), (req, res) => {
     id: data.length + 1,
     category,
     description,
+    location: location || "Not provided", // Store location
     image,
     status: "Pending",
     date: new Date().toISOString(),
@@ -47,7 +48,7 @@ app.post("/submit-feedback", upload.single("image"), (req, res) => {
 });
 
 app.get("/feedback", (req, res) => {
-  res.json(readData());
+  res.json(readData()); // Return feedback with location
 });
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
