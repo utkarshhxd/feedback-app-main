@@ -1,17 +1,24 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
 const fs = require("fs");
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const connectDB = require("./config/db");
+const authRoutes = require("./routes/auth");
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const DATA_FILE = "feedback.json";
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 
-// Step 1: Ensure the uploads/ folder exists
+// Connect to MongoDB
+connectDB();
+
+// Ensure the uploads/ folder exists
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR);
 }
@@ -28,7 +35,10 @@ const upload = multer({
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use("/uploads", express.static("uploads")); // Serve uploaded images
+app.use("/uploads", express.static("uploads"));
+
+// Authentication Routes
+app.use("/auth", authRoutes);
 
 const readData = () => {
   try {
